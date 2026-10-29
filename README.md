@@ -1,3 +1,9 @@
+# Disclaimer
+
+## AI tools were used to create the base code and text documentation for this project
+
+I will always disclose the use of AI. I mainly use GPT-Astra as a tool for my projects to do the footwork. This allows me to stay in pace with development as a solo developer.
+
 # IoT Environmental Monitoring System
 
 **Status:** In Development
