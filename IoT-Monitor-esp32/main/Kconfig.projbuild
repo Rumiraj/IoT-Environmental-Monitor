@@ -1,0 +1,15 @@
+menu "IoT Monitor Configuration"
+
+    config IOT_WIFI_SSID
+        string "Wi-Fi SSID"
+        default ""
+
+    config IOT_WIFI_PASSWORD
+        string "Wi-Fi Password"
+        default ""
+
+    config IOT_API_KEY
+        string "Backend API Key"
+        default ""
+
+endmenu

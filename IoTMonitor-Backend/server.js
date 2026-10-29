@@ -148,22 +148,30 @@ app.post("/api/sensors", async (req, res) => {
         humidity < 0 ||
         humidity > 100 ||
 
-        !Number.isInteger(airQuality) ||
-        airQuality < 0 ||
-        airQuality > 100
+        (
+            airQuality !== undefined &&
+            (
+                !Number.isInteger(airQuality) ||
+                airQuality < 0 ||
+                airQuality > 100
+            )
+        )
     ) {
-
         return res.status(400).json({
             error: "Invalid sensor readings"
         });
-    }
+}
 
     const measurement = {
-        temperature,
-        humidity,
-        airQuality,
-        timestamp: new Date()
+    temperature,
+    humidity,
+    timestamp: new Date()
     };
+
+    // Include air quality only when measured
+    if (airQuality !== undefined) {
+        measurement.airQuality = airQuality;
+    }
 
     try {
         await readings.insertOne(measurement);

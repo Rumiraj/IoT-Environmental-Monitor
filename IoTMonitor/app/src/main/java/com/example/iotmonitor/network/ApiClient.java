@@ -1,4 +1,3 @@
-
 package com.example.iotmonitor.network;
 
 import android.os.Handler;
@@ -23,12 +22,11 @@ import java.util.concurrent.Executors;
 
 public class ApiClient {
 
-    // REST API address
-    // Replace this IP with your computer's local IP in Part 3
+    // Node.js backend address
     private static final String API_URL =
-            "http://192.168.1.100:3000/api/sensors/latest";
+            "http://192.168.1.245:3000/api/sensors/latest";
 
-    // Background thread for network communication
+    // Background executor for network requests
     private final ExecutorService executor =
             Executors.newSingleThreadExecutor();
 
@@ -44,7 +42,7 @@ public class ApiClient {
         void onError(String error);
     }
 
-    // Request the latest sensor readings
+    // Retrieve the latest sensor measurement
     public void getLatestSensorData(SensorCallback callback) {
 
         executor.execute(() -> {
@@ -53,7 +51,6 @@ public class ApiClient {
 
             try {
 
-                // Create the HTTP connection
                 URL url = new URL(API_URL);
 
                 connection =
@@ -70,7 +67,7 @@ public class ApiClient {
                         "application/json"
                 );
 
-                // Check server response
+                // Check response status
                 int responseCode =
                         connection.getResponseCode();
 
@@ -81,15 +78,21 @@ public class ApiClient {
                     );
                 }
 
-                // Read the JSON response
+                // Read response body
                 StringBuilder response = new StringBuilder();
 
-                try (InputStream input = connection.getInputStream();
-                     BufferedReader reader = new BufferedReader(
-                             new InputStreamReader(
-                                     input,
-                                     StandardCharsets.UTF_8
-                             ))) {
+                try (
+                        InputStream input =
+                                connection.getInputStream();
+
+                        BufferedReader reader =
+                                new BufferedReader(
+                                        new InputStreamReader(
+                                                input,
+                                                StandardCharsets.UTF_8
+                                        )
+                                )
+                ) {
 
                     String line;
 
@@ -98,41 +101,70 @@ public class ApiClient {
                     }
                 }
 
-                // Convert the response to JSON
+                // Parse JSON response
                 JSONObject json =
                         new JSONObject(response.toString());
 
-                // Extract sensor measurements
+                // Required measurements
                 double temperature =
                         json.getDouble("temperature");
 
                 double humidity =
                         json.getDouble("humidity");
 
-                int airQuality =
-                        json.getInt("airQuality");
+                // Optional air-quality measurement
+                Integer airQuality = null;
 
-                // Validate the values
-                if (!Double.isFinite(temperature)
-                        || !Double.isFinite(humidity)
-                        || humidity < 0
-                        || humidity > 100
-                        || airQuality < 0
-                        || airQuality > 100) {
+                if (
+                        json.has("airQuality") &&
+                                !json.isNull("airQuality")
+                ) {
+                    airQuality = json.getInt("airQuality");
+                }
 
+                // Validate temperature
+                if (
+                        !Double.isFinite(temperature) ||
+                                temperature < -50 ||
+                                temperature > 125
+                ) {
                     throw new IOException(
-                            "Invalid sensor readings received"
+                            "Invalid temperature received"
                     );
                 }
 
-                // Create SensorData object
+                // Validate humidity
+                if (
+                        !Double.isFinite(humidity) ||
+                                humidity < 0 ||
+                                humidity > 100
+                ) {
+                    throw new IOException(
+                            "Invalid humidity received"
+                    );
+                }
+
+                // Validate air quality when available
+                if (airQuality != null) {
+
+                    if (
+                            airQuality < 0 ||
+                                    airQuality > 100
+                    ) {
+                        throw new IOException(
+                                "Invalid air-quality value received"
+                        );
+                    }
+                }
+
+                // Create the sensor data object
                 SensorData sensorData = new SensorData(
                         temperature,
                         humidity,
                         airQuality
                 );
 
-                // Return data to the UI thread
+                // Return successful result to UI thread
                 mainHandler.post(() -> {
                     callback.onSuccess(sensorData);
                 });
@@ -147,14 +179,12 @@ public class ApiClient {
 
                 String finalError = errorMessage;
 
-                // Return error to the UI thread
                 mainHandler.post(() -> {
                     callback.onError(finalError);
                 });
 
             } finally {
 
-                // Close the connection
                 if (connection != null) {
                     connection.disconnect();
                 }
@@ -162,7 +192,7 @@ public class ApiClient {
         });
     }
 
-    // Shut down background network operations
+    // Shut down background operations
     public void shutdown() {
         executor.shutdownNow();
     }

@@ -1,4 +1,3 @@
-
 package com.example.iotmonitor;
 
 import android.os.Bundle;
@@ -33,11 +32,10 @@ public class MainActivity extends AppCompatActivity {
 
     private Button buttonRefresh;
 
-    // Simulation settings
-    // Change to false when the REST API server is running
-    private static final boolean USE_SIMULATION = true;
+    // Live API enabled
+    private static final boolean USE_SIMULATION = false;
 
-    // Update interval: 5 seconds
+    // Refresh interval: 5 seconds
     private static final long UPDATE_INTERVAL = 5000;
 
     private final Random random = new Random();
@@ -51,7 +49,7 @@ public class MainActivity extends AppCompatActivity {
     private boolean activityVisible = false;
     private boolean requestInProgress = false;
 
-    // Automatic sensor update task
+    // Automatic update task
     private final Runnable updateTask = new Runnable() {
 
         @Override
@@ -68,12 +66,14 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
         super.onCreate(savedInstanceState);
 
         setContentView(R.layout.activity_main);
 
-        // Handle system bars on modern Android devices
-        View root = findViewById(R.id.dashboardRoot);
+        // Handle system bars
+        View root =
+                findViewById(R.id.dashboardRoot);
 
         ViewCompat.setOnApplyWindowInsetsListener(
                 root,
@@ -94,7 +94,7 @@ public class MainActivity extends AppCompatActivity {
                 }
         );
 
-        // Connect Java variables to XML components
+        // Connect Java variables to XML
         textTemperature =
                 findViewById(R.id.textTemperature);
 
@@ -116,14 +116,23 @@ public class MainActivity extends AppCompatActivity {
         buttonRefresh =
                 findViewById(R.id.buttonRefresh);
 
-        // Initialize the REST API client
+        // Initialize API client
         apiClient = new ApiClient();
 
-        // Set the initial connection status
+        // Initial dashboard values
+        textTemperature.setText("--.- °C");
+        textHumidity.setText("--.- %");
+        textAirQuality.setText("N/A");
+
+        textLastUpdate.setText(
+                "Waiting for sensor data"
+        );
+
+        // Initial connection status
         if (USE_SIMULATION) {
 
             textConnection.setText("SIMULATION MODE");
-            textDevice.setText("ESP32 - Not connected");
+            textDevice.setText("Simulated readings");
 
         } else {
 
@@ -132,28 +141,32 @@ public class MainActivity extends AppCompatActivity {
         }
 
         // Manual refresh button
-        buttonRefresh.setOnClickListener(new View.OnClickListener() {
+        buttonRefresh.setOnClickListener(
+                new View.OnClickListener() {
 
-            @Override
-            public void onClick(View view) {
-                refreshSensorData();
-            }
-        });
+                    @Override
+                    public void onClick(View view) {
+                        refreshSensorData();
+                    }
+                }
+        );
     }
 
     @Override
     protected void onStart() {
+
         super.onStart();
 
         activityVisible = true;
 
-        // Start automatic updates
+        // Begin automatic updates
         handler.removeCallbacks(updateTask);
         handler.post(updateTask);
     }
 
     @Override
     protected void onStop() {
+
         super.onStop();
 
         activityVisible = false;
@@ -164,6 +177,7 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
+
         super.onDestroy();
 
         handler.removeCallbacks(updateTask);
@@ -172,7 +186,7 @@ public class MainActivity extends AppCompatActivity {
         apiClient.shutdown();
     }
 
-    // Select simulation or live REST API data
+    // Refresh dashboard values
     private void refreshSensorData() {
 
         if (!activityVisible) {
@@ -191,18 +205,15 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    // Generate simulated environmental sensor readings
+    // Generate demonstration readings
     private SensorData generateSimulatedData() {
 
-        // Temperature: 20.0 to 28.0 degrees Celsius
         double temperature =
                 20.0 + random.nextDouble() * 8.0;
 
-        // Relative humidity: 35.0 to 65.0 percent
         double humidity =
                 35.0 + random.nextDouble() * 30.0;
 
-        // Simulated air-quality score: 50 to 90
         int airQuality =
                 50 + random.nextInt(41);
 
@@ -213,7 +224,7 @@ public class MainActivity extends AppCompatActivity {
         );
     }
 
-    // Request sensor readings from the Node.js REST API
+    // Retrieve live readings from Node.js
     private void fetchSensorDataFromApi() {
 
         // Prevent overlapping requests
@@ -235,11 +246,14 @@ public class MainActivity extends AppCompatActivity {
                             return;
                         }
 
-                        // API request succeeded
+                        // Update connection status
                         textConnection.setText("API CONNECTED");
-                        textDevice.setText("Server responding");
 
-                        // Display received sensor values
+                        textDevice.setText(
+                                "ESP32 Environmental Monitor"
+                        );
+
+                        // Update dashboard
                         displaySensorData(data);
                     }
 
@@ -252,8 +266,8 @@ public class MainActivity extends AppCompatActivity {
                             return;
                         }
 
-                        // API request failed
                         textConnection.setText("API OFFLINE");
+
                         textDevice.setText(error);
 
                         textLastUpdate.setText(
@@ -264,7 +278,7 @@ public class MainActivity extends AppCompatActivity {
         );
     }
 
-    // Display sensor readings on the dashboard
+    // Display measurements
     private void displaySensorData(SensorData data) {
 
         // Temperature
@@ -276,7 +290,7 @@ public class MainActivity extends AppCompatActivity {
                 )
         );
 
-        // Relative humidity
+        // Humidity
         textHumidity.setText(
                 String.format(
                         Locale.getDefault(),
@@ -286,13 +300,20 @@ public class MainActivity extends AppCompatActivity {
         );
 
         // Air quality
-        textAirQuality.setText(
-                String.format(
-                        Locale.getDefault(),
-                        "%d / 100",
-                        data.getAirQuality()
-                )
-        );
+        if (data.hasAirQuality()) {
+
+            textAirQuality.setText(
+                    String.format(
+                            Locale.getDefault(),
+                            "%d / 100",
+                            data.getAirQuality()
+                    )
+            );
+
+        } else {
+
+            textAirQuality.setText("N/A");
+        }
 
         // Format current time
         SimpleDateFormat timeFormat =
@@ -304,7 +325,7 @@ public class MainActivity extends AppCompatActivity {
         String currentTime =
                 timeFormat.format(new Date());
 
-        // Display the last successful update time
+        // Update timestamp
         textLastUpdate.setText(
                 "Last updated: " + currentTime
         );
